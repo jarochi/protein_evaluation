@@ -1,0 +1,130 @@
+---
+title: "Isogenic model - multiple pairwise median tests"
+author: "Michal Burdukiewicz"
+date: "5-01-2017"
+output: html_document
+---
+
+### Raw data 
+
+This is the raw data from file "06.06.2016 isogenic model 5744 for statistics.xlsx".
+
+```{r, echo=FALSE,fig.height=9,fig.width=8,message=FALSE,warning=FALSE}
+library(readxl)
+library(reshape2)
+library(multcomp)
+library(PMCMR)
+library(ggbeeswarm)
+library(DT)
+library(dplyr)
+source("plot_tools.R")
+
+median.test <- function(x, y){
+    z <- c(x, y)
+    g <- rep(1:2, c(length(x), length(y)))
+    m <- median(z)
+    fisher.test(z < m, g)
+}
+
+# raw_dat <- read_excel("06.06.2016 isogenic model 5744 for statistics.xlsx")
+all_prot <- read.csv("all_prot.csv")
+all_prot <- all_prot[, -c(4,11)]
+all_prot <- all_prot[, -2]
+raw_dat <- all_prot
+# raw_dat <- all_prot[1:920,]
+# raw_dat <- all_prot[1:1150,]   # This still works
+# raw_dat <- all_prot[1:1380,]   #SU2 is broken?
+# raw_dat <- all_prot[-(1151:1610),]  #RNAse and BSA
+# colnames(raw_dat)[1L:2] <- c("ser", "type")
+colnames(raw_dat)[1L:2] <- c("ser", "type")
+colnames(raw_dat)[3L:8] <- c("R1", "R2", "R3", "R4", "R5", "R6")
+#dat <- data.frame(raw_dat[, 1L:2], apply(raw_dat[, -c(1, 2)], 2, function(i) i/max(i)))
+dat <- raw_dat
+dat[[1]] <- factor(dat[[1]])
+dat[[2]] <- factor(dat[[2]])
+
+# dat[["ser"]] <- relevel(dat[["ser"]], "Empty")
+
+mdat <- melt(dat, variable.name = "replicate") %>% 
+  arrange(ser, type, replicate) %>% 
+  mutate(rep_gr = ceiling(as.numeric(substr(replicate, 2, 2))/2))
+
+# ggplot(mdat, aes(x = replicate, y = type, fill = value)) +
+#   geom_tile(color = "black") +
+#   facet_wrap(~ ser) +
+#   my_theme
+
+
+
+# amdat <- mutate(mdat, value = value/filter(mdat, ser == "Empty")[["value"]]) %>%
+#   filter(ser != "Empty") %>%
+#   droplevels()
+
+amdat <- mdat
+
+samdat <- group_by(amdat, ser, type) %>% 
+  summarise(value = median(value)) %>% 
+  ungroup
+
+ggplot(amdat, aes(x = type, y = value)) +
+  geom_quasirandom() +
+  geom_point(data = samdat, aes(x = type, y = value), color = "red", size = 2, alpha = 0.5) +
+  facet_wrap(~ ser, ncol = 2) + 
+  my_theme + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_x_discrete("") +
+  scale_y_continuous("Adjusted value")
+```
+
+### Median test
+
+Mood's median test: Fligner, M.A., and Rust, S.W. (1982). A Modification of Mood’s Median Test for The Generalized Behrens--Fisher Problem. Biometrika 69, 221–226.
+
+Reason: does not hold the assumption of the similar variance between two samples.
+
+Multiple testing, Benjamini-Hochberg correction. On the plot below as significant are marked comparisons with p-values smaller than 0.001.
+
+```{r, echo=FALSE,fig.height=13,fig.width=8,message=FALSE,warning=FALSE}
+test_res <- lapply(unique(amdat[["ser"]]), function(single_ser) {
+  path_dat <- filter(amdat, ser == single_ser) 
+    # group_by(pathotype, strain) %>% 
+    # summarise(value = median(value)) %>% 
+    # ungroup
+  
+  lapply(combn(levels(path_dat[["type"]]), 2, simplify = FALSE), function(i) {
+    dat1 <- filter(path_dat, type == i[[1]])[["value"]]
+    dat2 <- filter(path_dat, type == i[[2]])[["value"]]
+    pval <- median.test(dat1, dat2)[["p.value"]]
+    data.frame(Var1 = i[1], med1 = median(dat1), 
+               Var2 = i[2], med2 = median(dat2), pval = pval)
+  }) %>% 
+    do.call(rbind, .) %>% 
+    mutate(apval = p.adjust(pval, method = "BH"), signif = apval < 0.05,
+           lbl = paste0("m1 = ", round(med1, 2), "\nm2 = ", round(med2, 2)),
+           ser = single_ser)
+}) %>% 
+  do.call(rbind, .) %>% 
+  select(Var1, Var2, value = apval, ser, lbl) %>% 
+  mutate(significant = value < 0.001)
+
+test_res2 <- rbind(test_res,
+                   mutate(test_res, Var1a = Var1, Var1 = Var2, Var2 = Var1a) %>% 
+                     select(-Var1a)) %>% 
+  mutate(Var2 = factor(Var2, levels = levels(Var2)[c(9, 1L:8)]))
+
+ggplot(test_res2, aes(x = Var1, y = Var2, fill = significant, 
+                     label = ifelse(value > 0.05, formatC(value, digits = 2, format = "f"),
+                                    format(value, digits = 2)))) +
+  geom_tile(color = "black") +
+  geom_text(size = 2.5) +
+  facet_wrap(~ ser, ncol = 2) + 
+  my_theme + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+```{r, echo=FALSE,fig.height=9,fig.width=8,message=FALSE,warning=FALSE}
+datatable(test_res, options = list(dom = "Brtip"), filter = "top") %>% 
+  formatRound("value", 4)
+```
+
