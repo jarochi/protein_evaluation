@@ -23,7 +23,11 @@ median.test <- function(x, y){
     z <- c(x, y)
     g <- rep(1:2, c(length(x), length(y)))
     m <- median(z)
-    fisher.test(z < m, g)
+    if(length(unique(z < m)) == 1) {
+      list(p.value = 1)
+    } else {
+      fisher.test(z < m, g)
+    }
 }
 
 # raw_dat <- read_excel("06.06.2016 isogenic model 5744 for statistics.xlsx")
@@ -94,7 +98,11 @@ test_res <- lapply(unique(amdat[["ser"]]), function(single_ser) {
   lapply(combn(levels(path_dat[["type"]]), 2, simplify = FALSE), function(i) {
     dat1 <- filter(path_dat, type == i[[1]])[["value"]]
     dat2 <- filter(path_dat, type == i[[2]])[["value"]]
-    pval <- median.test(dat1, dat2)[["p.value"]]
+    
+    pval <- try(median.test(dat1, dat2)[["p.value"]], silent = TRUE)
+    if(class(pval) == "try-error")
+      browser()
+    
     data.frame(Var1 = i[1], med1 = median(dat1), 
                Var2 = i[2], med2 = median(dat2), pval = pval)
   }) %>% 
@@ -104,7 +112,7 @@ test_res <- lapply(unique(amdat[["ser"]]), function(single_ser) {
            ser = single_ser)
 }) %>% 
   do.call(rbind, .) %>% 
-  select(Var1, Var2, value = apval, ser, lbl) %>% 
+  select(Var1, Var2, value = apval, ser, lbl, pval) %>% 
   mutate(significant = value < 0.001)
 
 test_res2 <- rbind(test_res,
