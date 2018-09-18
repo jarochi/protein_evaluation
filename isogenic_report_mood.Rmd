@@ -1,7 +1,7 @@
 ---
 title: "Isogenic model - multiple pairwise median tests"
-author: "Michal Burdukiewicz"
-date: "5-01-2017"
+# author: "Michal Burdukiewicz"
+date: "18-09-2018"
 output:
   html_document: default
   pdf_document: default
@@ -9,9 +9,9 @@ output:
 
 ### Raw data 
 
-This is the raw data from file "06.06.2016 isogenic model 5744 for statistics.xlsx".
+Raw data from file.
 
-```{r, echo=FALSE,fig.height=30,fig.width=30,message=FALSE,warning=FALSE}
+```{r, echo=FALSE,fig.height=150,fig.width=30,message=FALSE,warning=FALSE}
 library(readxl)
 library(reshape2)
 library(multcomp)
@@ -34,7 +34,6 @@ median.test <- function(x, y){
 
 
 all_prot <- read.csv("all_prot.csv")
-# all_prot <- read.csv("all_prot123.csv")  # 20 strains example
 
 all_prot <- all_prot[, -c(4,11)]
 raw_dat <- all_prot[, -2]
@@ -42,6 +41,7 @@ raw_dat <- all_prot[, -2]
 colnames(raw_dat)[1L:2] <- c("strain", "protein")
 colnames(raw_dat)[3L:8] <- c("R1", "R2", "R3", "R4", "R5", "R6")
 #dat <- data.frame(raw_dat[, 1L:2], apply(raw_dat[, -c(1, 2)], 2, function(i) i/max(i)))
+
 dat <- raw_dat
 dat[[1]] <- factor(dat[[1]])
 dat[[2]] <- factor(dat[[2]])
@@ -50,14 +50,12 @@ dat[[2]] <- factor(dat[[2]])
 
 amdat <- melt(dat, variable.name = "replicate") %>% 
   arrange(strain, protein, replicate) %>% 
-  mutate(rep_gr = ceiling(as.numeric(substr(replicate, 2, 3))/3))
+  mutate(rep_gr = ceiling(as.numeric(substr(replicate, 2, 2))/2))
 
 # ggplot(mdat, aes(x = replicate, y = protein, fill = value)) +
 #   geom_tile(color = "black") +
 #   facet_wrap(~ strain) +
 #   my_theme
-
-
 
 # amdat <- mutate(mdat, value = value/filter(mdat, strain == "Empty")[["value"]]) %>%
 #   filter(strain != "Empty") %>%
@@ -85,7 +83,7 @@ Reason: does not hold the assumption of the similar variance between two samples
 
 Multiple testing, Benjamini-Hochberg correction. On the plot below as significant are marked comparisons with p-values smaller than 0.001.
 
-```{r, echo=FALSE,fig.height=30,fig.width=30,message=FALSE,warning=FALSE}
+```{r, echo=FALSE,fig.height=150,fig.width=30,message=FALSE,warning=FALSE}
 test_res <- lapply(unique(amdat[["strain"]]), function(single_strain) {
   path_dat <- filter(amdat, strain == single_strain)
     # group_by(pathoprotein, strain) %>%
