@@ -81,7 +81,7 @@ Mood's median test: Fligner, M.A., and Rust, S.W. (1982). A Modification of Mood
 
 Reason: does not hold the assumption of the similar variance between two samples.
 
-Multiple testing, Benjamini-Hochberg correction. On the plot below as significant are marked comparisons with p-values smaller than 0.001.
+Multiple testing, Benjamini-Hochberg correction. On the plot below as significant are marked comparisons with p-values smaller than 0.05.
 
 ```{r, echo=FALSE,fig.height=150,fig.width=30,message=FALSE,warning=FALSE}
 test_res <- lapply(unique(amdat[["strain"]]), function(single_strain) {
