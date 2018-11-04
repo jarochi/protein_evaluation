@@ -19,6 +19,7 @@ library(PMCMR)
 library(ggbeeswarm)
 library(DT)
 library(dplyr)
+library(ggplot2)
 source("plot_tools.R")
 
 median.test <- function(x, y){
@@ -33,13 +34,13 @@ median.test <- function(x, y){
 }
 
 
-all_prot <- read.csv("all_prot.csv")
+all_prot <- read.csv2("protein_evaluation.csv")
 
-all_prot <- all_prot[, -c(4,11)]
+all_prot <- all_prot[, -c(4,15)]
 raw_dat <- all_prot[, -2]
 
 colnames(raw_dat)[1L:2] <- c("strain", "protein")
-colnames(raw_dat)[3L:8] <- c("R1", "R2", "R3", "R4", "R5", "R6")
+colnames(raw_dat)[3L:12] <- c("R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10")
 #dat <- data.frame(raw_dat[, 1L:2], apply(raw_dat[, -c(1, 2)], 2, function(i) i/max(i)))
 
 dat <- raw_dat
@@ -50,7 +51,7 @@ dat[[2]] <- factor(dat[[2]])
 
 amdat <- melt(dat, variable.name = "replicate") %>% 
   arrange(strain, protein, replicate) %>% 
-  mutate(rep_gr = ceiling(as.numeric(substr(replicate, 2, 2))/2))
+  mutate(rep_gr = ceiling(as.numeric(substr(replicate, 2, 5))/2))
 
 # ggplot(mdat, aes(x = replicate, y = protein, fill = value)) +
 #   geom_tile(color = "black") +
@@ -117,7 +118,7 @@ test_res <- lapply(unique(amdat[["strain"]]), function(single_strain) {
 test_res2 <- rbind(test_res,
                    mutate(test_res, Var1a = Var1, Var1 = Var2, Var2 = Var1a) %>% 
                      select(-Var1a)) %>% 
-  mutate(Var2 = factor(Var2, levels = levels(Var2)[c(9, 1L:8)]))
+  mutate(Var2 = factor(Var2, levels = sort(levels(Var2)[c(9, 1L:12)])))
 
 ggplot(test_res2, aes(x = Var1, y = Var2, fill = significant, 
                      label = ifelse(value > 0.05, formatC(value, digits = 2, format = "f"),
